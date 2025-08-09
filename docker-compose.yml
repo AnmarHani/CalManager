@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: calmanager
+      POSTGRES_PASSWORD: calmanagerpass
+      POSTGRES_DB: calmanagerdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: calmanager-admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: adminpass
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  crud:
+    build:
+      context: ./CRUDService
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Database=calmanagerdb;Username=calmanager;Password=calmanagerpass
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  auth:
+    build:
+      context: ./AuthService
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/calmanagerdb
+      - SPRING_DATASOURCE_USERNAME=calmanager
+      - SPRING_DATASOURCE_PASSWORD=calmanagerpass
+    ports:
+      - "8082:8080"
+    depends_on:
+      - db
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "4173:4173"
+    depends_on:
+      - crud
+      - auth
+
+volumes:
+  db_data:
+  pgadmin_data:
